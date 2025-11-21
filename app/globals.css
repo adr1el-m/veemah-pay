@@ -1,32 +1,102 @@
-@import '98.css/dist/98.css';
+:root {
+  --bg: #f7f8fb;
+  --text: #0b1320;
+  --muted: #5b667a;
+  --primary: #0a6bff;
+  --primary-600: #0758d1;
+  --card: #ffffff;
+  --border: #e5e8ef;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
 
 body {
-  background: #008080; /* Nostalgic teal desktop */
-  /* Light wallpaper dot pattern for extra Win98 feel */
-  background-image:
-    radial-gradient(#009090 1px, transparent 1px),
-    radial-gradient(#009090 1px, transparent 1px);
-  background-position: 0 0, 10px 10px;
-  background-size: 20px 20px, 20px 20px;
   margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-* { cursor: default; }
+a { color: inherit; text-decoration: none; }
 
-button, input, select {
-  font-family: Tahoma, "MS Sans Serif", "Segoe UI", sans-serif;
+.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+.site-header { background: var(--card); border-bottom: 1px solid var(--border); }
+.site-header .inner { display: flex; align-items: center; gap: 24px; padding: 16px 24px; justify-content: space-between; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 18px; }
+.brand-mark { width: 28px; height: 28px; border-radius: 6px; background: linear-gradient(135deg,#0a6bff,#39b6ff); display: inline-block; }
+.top-nav { display: flex; gap: 16px; color: var(--muted); }
+.top-nav a { padding: 8px; border-radius: 6px; }
+.top-nav a:hover { color: var(--text); background: #f1f4f9; }
+.search { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.search input { width: 220px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: #f9fbff; }
+.search button { border: 0; background: var(--primary); color: #fff; padding: 10px 14px; border-radius: 8px; cursor: pointer; }
+.search button:active { background: var(--primary-600); }
+
+.hero { position: relative; overflow: hidden; background: var(--card); border-bottom: 1px solid var(--border); }
+.hero .inner { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; align-items: center; padding: 32px 24px; }
+.hero-graphic { position: relative; height: 320px; border-radius: 16px; background:
+  radial-gradient(1200px 400px at -50% 20%, rgba(58,182,255,0.25), transparent 60%),
+  radial-gradient(900px 300px at 120% 80%, rgba(10,107,255,0.18), transparent 60%),
+  linear-gradient(180deg, #eef4ff, #ffffff);
+  box-shadow: 0 30px 60px rgba(11,19,32,0.08);
+}
+.device { position: absolute; right: 16px; bottom: 16px; width: 400px; height: 250px; border-radius: 24px; background: #101623; box-shadow: 0 30px 60px rgba(11,19,32,0.25); transform: rotate(-6deg); }
+.device .screen { position: absolute; inset: 16px; border-radius: 18px; background: linear-gradient(180deg,#1a2236,#0f1628); color: #fff; display: grid; place-items: center; font-weight: 700; letter-spacing: 0.4px; }
+.ribbon { position: absolute; left: -20px; top: 40%; transform: rotate(-8deg); background: #ffffff; color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 8px 14px; box-shadow: 0 8px 20px rgba(11,19,32,0.12); }
+
+.hero-copy h1 { margin: 0 0 12px 0; font-size: 36px; line-height: 1.2; }
+.hero-copy p { margin: 0 0 16px 0; color: var(--muted); font-size: 18px; }
+.hero-actions { display: flex; gap: 12px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+.btn.primary { background: var(--primary); color: #fff; border-color: transparent; }
+.btn.primary:active { background: var(--primary-600); }
+
+.quick-actions { background: var(--card); }
+.quick-actions .inner { padding: 24px; }
+
+input, select { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: #ffffff; }
+
+.toolbar { display: flex; gap: 8px; align-items: center; margin: 8px 0 16px; }
+
+.table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.table th, .table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.table th { text-align: left; color: var(--muted); font-weight: 600; }
+.table.zebra tbody tr:nth-child(odd) { background: #fafbff; }
+.table tbody tr:hover { background: #f4f7ff; }
+.table .num { text-align: right; }
+.selected { background: #eef4ff !important; }
+
+.actions-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: grid; gap: 10px; align-items: start; text-align: left; }
+.card h2, .card h3 { margin: 0 0 8px 0; font-size: 16px; }
+.muted { color: var(--muted); }
+.cards { display: grid; grid-template-columns: repeat(6,1fr); gap: 14px; }
+.card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: grid; justify-items: center; text-align: center; }
+.icon { width: 40px; height: 40px; border-radius: 50%; background: #eef4ff; display: grid; place-items: center; color: var(--primary); font-weight: 700; }
+.card span { margin-top: 8px; font-size: 14px; color: var(--text); }
+
+.advisories { background: var(--card); border-top: 1px solid var(--border); }
+.advisories .inner { padding: 16px 24px 32px; }
+.advisory-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+.advisory-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.advisory-card h3 { margin: 0 0 8px 0; font-size: 16px; }
+.advisory-card p { margin: 0; color: var(--muted); font-size: 14px; }
+
+@media (max-width: 1024px) {
+  .top-nav { display: none; }
+  .hero .inner { grid-template-columns: 1fr; }
+  .device { position: absolute; right: 12px; bottom: 12px; width: 320px; height: 200px; }
+  .cards { grid-template-columns: repeat(3,1fr); }
+  .advisory-grid { grid-template-columns: repeat(2,1fr); }
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.table th, .table td {
-  border: 1px solid #000;
-  padding: 6px;
-}
-
-.selected td {
-  background: #c0c0c0;
+@media (max-width: 640px) {
+  .search input { width: 140px; }
+  .cards { grid-template-columns: repeat(2,1fr); }
+  .advisory-grid { grid-template-columns: 1fr; }
 }

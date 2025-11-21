@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'RGBC — Win98',
-  description: 'Richard Gwapo Banking Corporation in Windows 98 style',
+  title: 'VeemahPay',
+  description: 'VeemahPay — Modern banking landing page',
 };
 
 import './globals.css';

@@ -140,8 +140,10 @@ export async function POST(req: NextRequest) {
     }
 
     const status = pending ? 'Pending' : 'Completed';
-    let srcAfter = src.balance;
-    let trgAfter = trg ? trg.balance : null;
+    const srcBefore = src.balance;
+    const trgBefore = trg ? trg.balance : null;
+    let srcAfter = srcBefore;
+    let trgAfter = trgBefore;
 
     // If immediate, apply effects
     if (!pending) {
@@ -153,7 +155,6 @@ export async function POST(req: NextRequest) {
         srcAfter = src.balance - amt;
         await client.query(`UPDATE accounts SET balance = balance - $1 WHERE account_number = $2`, [amt, source_account]);
       } else {
-        // transfer
         if (amt > src.balance) throw new Error('Insufficient funds');
         srcAfter = src.balance - amt;
         trgAfter = trg.balance + amt;
@@ -194,9 +195,9 @@ export async function POST(req: NextRequest) {
       if (has('created_at'))    { insertCols.push('created_at');    valuesSql.push('now()'); }
       if (has('completed_at'))  { insertCols.push('completed_at');  valuesSql.push(pending ? 'NULL' : 'now()'); }
       if (has('voided_at'))     { insertCols.push('voided_at');     valuesSql.push('NULL'); }
-      if (has('source_balance_before')) { insertCols.push('source_balance_before'); valuesSql.push(`$${idx}`); params.push(src.balance); idx++; }
+      if (has('source_balance_before')) { insertCols.push('source_balance_before'); valuesSql.push(`$${idx}`); params.push(srcBefore); idx++; }
       if (has('source_balance_after'))  { insertCols.push('source_balance_after');  valuesSql.push(`$${idx}`); params.push(srcAfter); idx++; }
-      if (has('target_balance_before')) { insertCols.push('target_balance_before'); valuesSql.push(`$${idx}`); params.push(trg ? trg.balance : null); idx++; }
+      if (has('target_balance_before')) { insertCols.push('target_balance_before'); valuesSql.push(`$${idx}`); params.push(trgBefore); idx++; }
       if (has('target_balance_after'))  { insertCols.push('target_balance_after');  valuesSql.push(`$${idx}`); params.push(trgAfter ?? null); idx++; }
 
       const returning: string[] = [];
@@ -210,9 +211,9 @@ export async function POST(req: NextRequest) {
       returning.push(has('created_by') ? 'created_by' : `(${session ? `'${session}'` : `'0000'`})::text AS created_by`);
       returning.push(has('created_at') ? 'created_at' : 'now() AS created_at');
       returning.push(has('completed_at') ? 'completed_at' : (pending ? 'NULL AS completed_at' : 'now() AS completed_at'));
-      returning.push(has('source_balance_before') ? 'source_balance_before::float' : `${src.balance}::float AS source_balance_before`);
+      returning.push(has('source_balance_before') ? 'source_balance_before::float' : `${srcBefore}::float AS source_balance_before`);
       returning.push(has('source_balance_after') ? 'source_balance_after::float' : `${srcAfter}::float AS source_balance_after`);
-      returning.push(has('target_balance_before') ? 'target_balance_before::float' : `${trg ? trg.balance : 'NULL'}::float AS target_balance_before`);
+      returning.push(has('target_balance_before') ? 'target_balance_before::float' : `${trgBefore ?? 'NULL'}::float AS target_balance_before`);
       returning.push(has('target_balance_after') ? 'target_balance_after::float' : `${trgAfter ?? 'NULL'}::float AS target_balance_after`);
 
       const sql = `INSERT INTO transactions (${insertCols.join(', ')}) VALUES (${valuesSql.join(', ')}) RETURNING ${returning.join(', ')}`;
