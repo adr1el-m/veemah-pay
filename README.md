@@ -23,7 +23,7 @@
 
 | Name | Role |
 | :--- | :--- |
-| **MAGALONA, Adriel M.** | Lead Developer / Full Stack |
+| **MAGALONA, Adriel M.** | Member |
 | **INSO, Eliazar N.** | Member |
 | **JAMISON, Hanzlei** | Member |
 | **OLIVEROS, Mariel** | Member |
