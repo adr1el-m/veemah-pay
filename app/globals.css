@@ -115,8 +115,8 @@ input, select { width: 100%; border: 1px solid var(--border); border-radius: 10p
 .table .num { text-align: right; }
 .selected { background: var(--table-selected) !important; }
 
-.actions-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: grid; gap: 10px; align-items: start; text-align: left; }
+.actions-grid { display: flex; flex-wrap: wrap; gap: 16px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: grid; gap: 10px; align-items: start; text-align: left; flex: 1 1 15em;}
 .card h2, .card h3 { margin: 0 0 8px 0; font-size: 16px; }
 .muted { color: var(--muted); }
 .cards { display: grid; grid-template-columns: repeat(6,1fr); gap: 14px; }
@@ -160,9 +160,9 @@ input, select { width: 100%; border: 1px solid var(--border); border-radius: 10p
 
 @media (max-width: 1024px) {
   .top-nav { display: none; }
-  .hamburger { display: inline-flex; }
+  .hamburger { display: inline-flex !important; flex-wrap: wrap;}
   .site-header .inner { position: relative; }
-  .top-nav.open { display: flex; flex-direction: column; position: absolute; top: 100%; right: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 8px; box-shadow: 0 12px 24px rgba(0,0,0,0.12); }
+  .top-nav.open { display: flex; flex-direction: column; position: absolute; top: 84%; right: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1em; box-shadow: 0 12px 24px rgba(0,0,0,0.12); }
   .hero .inner { grid-template-columns: 1fr; }
   .device { position: absolute; right: 12px; bottom: 12px; width: 320px; height: 200px; }
   .cards { grid-template-columns: repeat(3,1fr); }
@@ -180,10 +180,14 @@ input, select { width: 100%; border: 1px solid var(--border); border-radius: 10p
   .advisory-grid { grid-template-columns: 1fr; }
 }
 .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--primary); display: grid; place-items: center; font-weight: 700; }
-.hamburger { display: none; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); align-items: center; justify-content: center; gap: 3px; }
+.hamburger { display: none; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); align-items: center; justify-content: center; gap: 3px; padding: 5px 0;}
 .hamburger span { width: 18px; height: 2px; background: var(--text); display: block; }
 .quick-info { display: grid; }
 .quick-info .muted { font-size: 12px; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ Flexible Utilities ━━━━━━━━━━━━━━━━━━━━━━ */
+.hBox-wrappper { display: flex; flex-wrap: wrap; gap: 16px; }
+.hBox-wrappper div { flex: 1 1 300px; }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━ Mobile Resize ━━━━━━━━━━━━━━━━━━━━━━━━ */
 @media screen and (max-width: 500px) {

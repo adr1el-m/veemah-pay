@@ -380,7 +380,7 @@ export function SpendingGraph({ transactions }: Props) {
         </ResponsiveContainer>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+      <div className="hBox-wrappper">
         <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 12 }}>
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>{t('graph.expense_by_category')}</div>
           <div style={{ width: '100%', height: 260 }}>

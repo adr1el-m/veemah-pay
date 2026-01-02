@@ -10,9 +10,45 @@ import { ThemeProvider } from '@/components/ui/ThemeProvider';
 import { ToastProvider } from '@/components/ui/Toast';
 import { LanguageProvider } from '@/components/ui/LanguageProvider';
 import { Chatbot } from '@/components/ui/Chatbot';
+import { AuthProvider } from '@/components/ui/AuthProvider';
+import { pool } from '@/lib/db';
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+type Me = { 
+  authenticated: boolean; 
+  account?: { 
+    account_number: string; 
+    name: string; 
+    balance: number; 
+    status: string 
+  } 
+};
+
+async function getServerMe(): Promise<Me> {
+  try {
+    const session = cookies().get('session')?.value;
+    if (!session) {
+      return { authenticated: false };
+    }
+
+    const result = await pool.query(
+      'SELECT account_number, name, balance::float AS balance, status FROM accounts WHERE account_number = $1',
+      [session]
+    );
+    
+    if (result.rowCount === 0) {
+      return { authenticated: false };
+    }
+    
+    return { authenticated: true, account: result.rows[0] };
+  } catch (error) {
+    console.error('Server auth error:', error);
+    return { authenticated: false };
+  }
+}
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const langCookie = cookies().get('language')?.value as 'en' | 'tl' | undefined;
+  const initialMe = await getServerMe();
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -24,10 +60,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <LanguageProvider initialLanguage={langCookie === 'tl' ? 'tl' : 'en'}>
           <ThemeProvider>
-            <ToastProvider>
-              {children}
-              <Chatbot />
-            </ToastProvider>
+            <AuthProvider initialMe={initialMe}>
+              <ToastProvider>
+                {children}
+                <Chatbot />
+              </ToastProvider>
+            </AuthProvider>
           </ThemeProvider>
         </LanguageProvider>
       </body>
