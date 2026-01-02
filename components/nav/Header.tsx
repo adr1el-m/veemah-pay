@@ -1,29 +1,18 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import React, { useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import logo from "../../assets/img/veemahpay-logo.png";
 import { ThemeToggle } from "@/components/ui/ThemeProvider";
 import { LanguageToggle, useLanguage } from "@/components/ui/LanguageProvider";
-
-type Me = { authenticated: boolean; account?: { account_number: string; name: string; balance: number; status: string } };
+import { useAuth } from "@/components/ui/AuthProvider";
 
 export function Header(){
   const pathname = usePathname();
-  const router = useRouter();
-  const [me, setMe] = useState<Me | null>(null);
   const [open, setOpen] = useState(false);
   const { t } = useLanguage();
-
-  useEffect(() => {
-    fetch("/api/me").then(r => r.json()).then(setMe).catch(() => setMe({ authenticated: false } as any));
-  }, []);
-
-  const logout = async () => {
-    await fetch("/api/logout", { method: "POST" });
-    router.replace("/");
-  };
+  const { me, logout } = useAuth();
 
   const NavLink = ({ href, label }:{ href: string; label: string }) => (
     <Link href={href} className={pathname === href ? "active" : ""}>{label}</Link>
