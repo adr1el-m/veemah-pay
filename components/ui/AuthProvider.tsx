@@ -28,17 +28,27 @@ export function AuthProvider({ children, initialMe }: {
   const [me, setMe] = useState<Me | null>(initialMe || { authenticated: false });
   const router = useRouter();
 
-  // Sync with server-provided initialMe after hydration
+  // Sync with server-provided initialMe after hydration, but don't override client updates
   useEffect(() => {
-    if (initialMe && initialMe.authenticated !== me?.authenticated) {
+    // Only set initialMe if we haven't been initialized yet or if there's a significant change
+    if (initialMe && me && initialMe.authenticated !== me.authenticated) {
+      setMe(initialMe);
+    } else if (!me && initialMe) {
       setMe(initialMe);
     }
-  }, [initialMe, me?.authenticated]);
+  }, [initialMe]); // Removed me?.authenticated dependency to prevent loops
 
   const logout = async () => {
-    await fetch("/api/logout", { method: "POST" });
-    setMe({ authenticated: false });
-    router.replace("/");
+    try {
+      await fetch("/api/logout", { method: "POST" });
+      setMe({ authenticated: false });
+      router.replace("/");
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still set to false even if API call fails
+      setMe({ authenticated: false });
+      router.replace("/");
+    }
   };
 
   // Refresh user data when needed
