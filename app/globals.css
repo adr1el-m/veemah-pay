@@ -206,4 +206,11 @@ input, select { width: 100%; border: 1px solid var(--border); border-radius: 10p
     .hBox{
         grid-template-columns: 1fr !important;
     }
+    /* Target the 2nd and 3rd <td> and <th> of every row */
+    table tr td:nth-child(2), 
+    table tr th:nth-child(2),
+    table tr td:nth-child(3), 
+    table tr th:nth-child(3) {
+        display: none;
+    }
 }

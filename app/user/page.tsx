@@ -24,6 +24,7 @@ export default function UserPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrMode, setQrMode] = useState<"display" | "scan">("display");
+  const [refreshing, setRefreshing] = useState(false);
 
   const readJson = async (res: Response) => {
     try {
@@ -55,6 +56,7 @@ export default function UserPage() {
 
   const fetchTransactions = async (acc: string) => {
     try {
+      setRefreshing(true);
       const res = await fetch(`/api/transactions?account=${encodeURIComponent(acc)}&limit=50`);
       const data: any = await readJson(res);
       const txs = Array.isArray(data?.transactions) ? data.transactions : [];
@@ -65,6 +67,21 @@ export default function UserPage() {
     } catch (e: any) {
       setTransactions([]);
       setError(e?.message || t('user.operation_failed'));
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const refreshData = async () => {
+    if (!me) return;
+    setRefreshing(true);
+    try {
+      await fetchMe();
+      await fetchTransactions(me.account_number);
+    } catch (e: any) {
+      setError(e?.message || t('user.operation_failed'));
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -144,9 +161,9 @@ export default function UserPage() {
 
       if (!opOk) return;
 
+      // Auto-refresh data after successful operation
       try {
-        await fetchMe();
-        await fetchTransactions(me.account_number);
+        await refreshData();
       } catch (e: any) {
         setError(e?.message || t('user.operation_failed'));
       }
@@ -225,9 +242,9 @@ export default function UserPage() {
 
       if (!opOk) return;
 
+      // Auto-refresh data after successful transfer
       try {
-        await fetchMe();
-        await fetchTransactions(me.account_number);
+        await refreshData();
       } catch (e: any) {
         setError(e?.message || t('user.transfer_failed'));
       }
@@ -324,7 +341,17 @@ export default function UserPage() {
           </div>
 
           <div className="card">
-            <h3>{t('dash.recent_tx')}</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3>{t('dash.recent_tx')}</h3>
+              <button 
+                className="btn ghost" 
+                onClick={refreshData}
+                disabled={refreshing}
+                style={{ padding: '8px 12px', fontSize: '14px' }}
+              >
+                {refreshing ? '🔄 Refreshing...' : '🔄 Refresh'}
+              </button>
+            </div>
             <div style={{ overflowX: "auto" }}>
               <table className="table zebra">
                 <thead>
@@ -333,19 +360,40 @@ export default function UserPage() {
                     <th>Type</th>
                     <th>Status</th>
                     <th>Amount</th>
-                    <th>Target</th>
+                    <th>Date</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.map(t => (
-                    <tr key={t.id}>
-                      <td>{t.id}</td>
-                      <td>{t.type}</td>
-                      <td>{t.status}</td>
-                      <td className="num">₱{Number(t.amount).toFixed(2)}</td>
-                      <td>{t.target_account || ""}</td>
-                    </tr>
-                  ))}
+                  {transactions.map(t => {
+                    // Determine if this is incoming or outgoing money for the user
+                    const isIncoming = t.target_account === me?.account_number || t.type === 'deposit';
+                    const isOutgoing = (t.type === 'withdraw' || t.type === 'transfer') && !isIncoming;
+                    
+                    return (
+                      <tr key={t.id}>
+                        <td>{t.id}</td>
+                        <td style={{ textTransform: 'capitalize' }}>{t.type}</td>
+                        <td>
+                          <span style={{ 
+                            padding: '4px 8px', 
+                            borderRadius: '4px', 
+                            fontSize: '12px',
+                            backgroundColor: t.status === 'Completed' ? '#3f9c29' : t.status === 'Pending' ? '#ff9800' : '#f44336',
+                            color: 'white'
+                          }}>
+                            {t.status}
+                          </span>
+                        </td>
+                        <td className="num" style={{ 
+                          color: isIncoming ? '#4caf50' : isOutgoing ? '#f44336' : '#333',
+                          fontWeight: 'bold'
+                        }}>
+                          {isIncoming ? '+' : isOutgoing ? '-' : ''}₱{Number(t.amount).toFixed(2)}
+                        </td>
+                        <td>{t.created_at ? new Date(t.created_at).toLocaleDateString() : '-'}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
