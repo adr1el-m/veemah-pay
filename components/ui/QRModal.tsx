@@ -15,18 +15,8 @@ export function QRModal({ isOpen, onClose, mode, accountNumber, onAccountScanned
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [scanError, setScanError] = useState<string>("");
   const [isScanning, setIsScanning] = useState(false);
-  const [permissionGranted, setPermissionGranted] = useState(false);
-  const [permissionRequested, setPermissionRequested] = useState(false);
-  const [isHttps, setIsHttps] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const qrScannerRef = useRef<QrScanner | null>(null);
-
-  // Check if we're on HTTPS (required for camera on mobile)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setIsHttps(window.location.protocol === 'https:' || window.location.hostname === 'localhost');
-    }
-  }, []);
 
   // Generate QR code for display mode
   useEffect(() => {
@@ -46,34 +36,55 @@ export function QRModal({ isOpen, onClose, mode, accountNumber, onAccountScanned
 
   // Setup QR scanner for scan mode
   useEffect(() => {
-    // Don't auto-start, let user click the permission button
+    if (mode === "scan" && isOpen) {
+      // Set scanning to true first to show the video element
+      setIsScanning(true);
+      
+      // Then start the actual scanner after a delay
+      const timer = setTimeout(() => {
+        startScanning();
+      }, 100);
+      
+      return () => {
+        clearTimeout(timer);
+        stopScanning();
+      };
+    }
+    
     return () => {
       stopScanning();
     };
   }, [mode, isOpen]);
 
-  const requestCameraPermission = async () => {
-    setPermissionRequested(true);
-    setScanError("");
-    setIsScanning(true);
+  const startScanning = async () => {
+    console.log('QR Modal - startScanning called, videoRef:', videoRef.current);
+    if (!videoRef.current) {
+      console.log('QR Modal - No video ref, returning');
+      return;
+    }
 
     try {
-      // Use QR Scanner's built-in permission handling which works better on mobile
-      if (!videoRef.current) return;
+      setScanError(""); // Clear any previous errors
+      // Don't set isScanning to true here since it's already set in useEffect
 
-      // Check if camera is available first
+      console.log('QR Modal - Checking camera availability');
+      // Check if camera is available
       const hasCamera = await QrScanner.hasCamera();
+      console.log('QR Modal - Has camera:', hasCamera);
       if (!hasCamera) {
         setScanError("No camera found on this device");
         setIsScanning(false);
         return;
       }
 
-      // Create QR scanner instance - this will handle permissions internally
+      console.log('QR Modal - Creating QR scanner instance');
+      // Create QR scanner instance
       qrScannerRef.current = new QrScanner(
         videoRef.current,
         (result) => {
+          console.log('QR Modal - Scan result:', result);
           if (result?.data) {
+            // Validate that the scanned data looks like an account number
             const scannedData = result.data.trim();
             if (scannedData && onAccountScanned) {
               onAccountScanned(scannedData);
@@ -84,52 +95,21 @@ export function QRModal({ isOpen, onClose, mode, accountNumber, onAccountScanned
         {
           highlightScanRegion: true,
           highlightCodeOutline: true,
-          preferredCamera: "environment",
-          maxScansPerSecond: 5, // Reduce CPU usage
+          preferredCamera: "environment", // Use back camera on mobile
         }
       );
 
-      // Start scanner - this will trigger permission request on mobile
+      console.log('QR Modal - Starting scanner');
       await qrScannerRef.current.start();
-      setPermissionGranted(true);
-      
+      console.log('QR Modal - Scanner started successfully');
     } catch (error: any) {
-      console.error("Camera permission error:", error);
-      setIsScanning(false);
-      
-      // Handle different types of errors
-      if (error.name === 'NotAllowedError' || error.message?.includes('Permission denied')) {
-        setScanError("Camera permission denied. Please allow camera access and try again.");
-      } else if (error.name === 'NotFoundError') {
-        setScanError("No camera found on this device.");
-      } else if (error.name === 'NotSupportedError') {
-        setScanError("Camera not supported on this device or browser.");
-      } else {
-        setScanError("Unable to access camera. Make sure you're using HTTPS and camera is not being used by another app.");
-      }
-    }
-  };
-
-  const startScanning = async () => {
-    // This function is now handled by requestCameraPermission
-    // Keeping it for the "Try Again" functionality
-    if (!qrScannerRef.current) {
-      requestCameraPermission();
-      return;
-    }
-
-    try {
-      setScanError("");
-      setIsScanning(true);
-      await qrScannerRef.current.start();
-    } catch (error) {
-      console.error("Scanner restart error:", error);
-      setScanError("Failed to restart camera scanner. Please try again.");
+      console.error("QR Modal - Camera error:", error);
+      setScanError(`Failed to access camera: ${error.message || error}. Please allow camera access and try again.`);
       setIsScanning(false);
     }
   };
 
-  const stopScanning = () => {
+    const stopScanning = () => {
     if (qrScannerRef.current) {
       qrScannerRef.current.stop();
       qrScannerRef.current.destroy();
@@ -142,12 +122,12 @@ export function QRModal({ isOpen, onClose, mode, accountNumber, onAccountScanned
     stopScanning();
     setScanError("");
     setQrDataUrl("");
-    setPermissionGranted(false);
-    setPermissionRequested(false);
     onClose();
   };
 
   if (!isOpen) return null;
+
+  console.log('QR Modal - Rendering, mode:', mode, 'scanError:', scanError, 'isScanning:', isScanning);
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
@@ -174,35 +154,16 @@ export function QRModal({ isOpen, onClose, mode, accountNumber, onAccountScanned
           
           {mode === "scan" && (
             <div className="qr-scanner">
-              {!isHttps && (
-                <div className="permission-denied">
-                  <div className="error-icon">🔒</div>
-                  <h4>HTTPS Required</h4>
-                  <p>Camera access requires a secure connection (HTTPS) on mobile devices. Please access this site via HTTPS.</p>
-                  <button className="btn ghost" onClick={handleClose}>
-                    Close
-                  </button>
-                </div>
-              )}
-
-              {isHttps && !permissionRequested && (
-                <div className="permission-request">
-                  <div className="camera-icon">📷</div>
-                  <h4>Camera Access Required</h4>
-                  <p>To scan QR codes, we need access to your camera. Make sure no other app is using it.</p>
-                  <button className="btn primary" onClick={requestCameraPermission}>
-                    Start Camera
-                  </button>
-                </div>
-              )}
-              
-              {isHttps && permissionRequested && scanError && (
+              {scanError ? (
                 <div className="permission-denied">
                   <div className="error-icon">❌</div>
                   <h4>Camera Issue</h4>
                   <p>{scanError}</p>
                   <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                    <button className="btn" onClick={requestCameraPermission}>
+                    <button className="btn" onClick={() => {
+                      setIsScanning(true);
+                      setTimeout(startScanning, 100);
+                    }}>
                       Try Again
                     </button>
                     <button className="btn ghost" onClick={handleClose}>
@@ -210,9 +171,7 @@ export function QRModal({ isOpen, onClose, mode, accountNumber, onAccountScanned
                     </button>
                   </div>
                 </div>
-              )}
-
-              {isHttps && permissionGranted && isScanning && (
+              ) : isScanning ? (
                 <>
                   <video
                     ref={videoRef}
@@ -227,6 +186,12 @@ export function QRModal({ isOpen, onClose, mode, accountNumber, onAccountScanned
                     </button>
                   </div>
                 </>
+              ) : (
+                <div className="permission-request">
+                  <div className="camera-icon">📷</div>
+                  <h4>Starting Camera...</h4>
+                  <p>Preparing to scan QR codes</p>
+                </div>
               )}
             </div>
           )}
