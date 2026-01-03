@@ -10,6 +10,7 @@ import { MoneyDisplay, PositiveMoney } from '@/components/ui/MoneyDisplay';
 type Account = { account_number: string; name: string; balance: number; status: string };
 type Transaction = { id: number; type: string; status: string; amount: number; target_account?: string | null; note?: string | null; created_at?: string };
 
+
 export default function UserPage() {
   const router = useRouter();
   const { t } = useLanguage();
@@ -278,57 +279,89 @@ export default function UserPage() {
       <section className="quick-actions">
         <div className="inner container" style={{ display: "grid", gap: 16 }}>
           {me && (
-            <div className="card">
-              <h3>{t('dash.overview')}</h3>
-              <div>{t('dash.account')}: {me.account_number}</div>
-              <div>{t('dash.name')}: {me.name}</div>
-              <div>{t('dash.status')}: {me.status}</div>
-              <div>{t('dash.balance')}: <MoneyDisplay amount={me.balance} /></div>
+            <div className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <h3 style={{ margin: 0 }}>{t('dash.overview')}</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{me.name}</div>
+                <div
+                    style={{
+                        padding: '4px 7px',
+                        borderRadius: 8,
+                        background:
+                            me.status === 'Active' ? '#28992e' :
+                            me.status === 'Locked' ? '#ac3030' :
+                            me.status === 'Archived' ? '#936929' :
+                            'var(--muted)',
+                        color: '#fff',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        margin: '0 7px'
+                    }}
+                >
+                    {me.status}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.3em', flexWrap: 'wrap', width: '100%' }}>
+                <div style={{ flex: '1 1 auto' }}>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>{t('dash.account')}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '0.3px' }}>{me.account_number}</div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: '0 0 auto' }}>
+                  <div style={{ textAlign: 'right' }} className="right-sided-text">
+                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>{t('dash.balance')}</div>
+                    <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1 }}>{/* large balance */}
+                      <MoneyDisplay amount={me.balance} />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
           {error && <div style={{ color: "#b00020" }}>{error}</div>}
           
           <div className="actions-grid">
-            <div className="card">
+            <div className="card card flexible-card">
               <h3>{t('dash.deposit')}</h3>
               <input placeholder={t('dash.amount')} value={depAmount} onChange={e => setDepAmount(e.target.value)} />
               <button className="btn primary" onClick={() => doOp("deposit")} disabled={pending}>{t('dash.deposit')}</button>
             </div>
-            <div className="card">
+            <div className="card card flexible-card">
               <h3>{t('dash.withdraw')}</h3>
               <input placeholder={t('dash.amount')} value={wdAmount} onChange={e => setWdAmount(e.target.value)} />
               <input type="password" placeholder={t('user.pin_placeholder')} value={wdPin} onChange={e => setWdPin(e.target.value)} maxLength={5} style={{ marginTop: 8 }} />
-              <button className="btn" onClick={() => doOp("withdraw")} disabled={pending}>{t('dash.withdraw')}</button>
+              <button className="btn primary" onClick={() => doOp("withdraw")} disabled={pending}>{t('dash.withdraw')}</button>
             </div>
-            <div className="card">
+            <div className="card card flexible-card">
               <h3>{t('dash.transfer')}</h3>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', gap: '8px'}}>
                 <input 
                   placeholder={t('dash.target')} 
                   value={txTarget} 
                   onChange={e => setTxTarget(e.target.value)} 
-                  style={{ flex: 1 }}
+                  
                 />
                 <button 
                   className="btn ghost" 
                   onClick={handleScanQR}
                   title="Scan QR Code"
-                  style={{ padding: '8px 12px', fontSize: '14px' }}
+                  style={{ padding: '8px 12px', fontSize: '14px', flex: '1 0 6em'}}
                 >
                   📷 Scan
                 </button>
               </div>
               <input placeholder={t('dash.amount')} value={txAmount} onChange={e => setTxAmount(e.target.value)} />
-              <input type="password" placeholder={t('user.pin_placeholder')} value={txPin} onChange={e => setTxPin(e.target.value)} maxLength={5} style={{ marginTop: 8 }} />
-              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                <button className="btn" onClick={doTransfer} disabled={pending} style={{ flex: 1 }}>
+              <input type="password" placeholder={t('user.pin_placeholder')} value={txPin} onChange={e => setTxPin(e.target.value)} maxLength={5} />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="btn primary" onClick={doTransfer} disabled={pending}>
                   {t('dash.transfer')}
                 </button>
                 <button 
                   className="btn ghost" 
                   onClick={handleShowMyQR}
                   title="Show My QR Code"
-                  style={{ padding: '8px 12px', fontSize: '14px' }}
+                  style={{ padding: '8px 12px', fontSize: '14px', flex: '1 0 7em', border: '1px solid #405a9c'  }}
                 >
                   📱 My QR
                 </button>
