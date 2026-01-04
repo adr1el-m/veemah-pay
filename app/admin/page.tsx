@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Header } from '@/components/nav/Header';
 import { Breadcrumbs } from '@/components/nav/Breadcrumbs';
 
-type Account = { account_number: string; name: string; balance: number; status: "Active" | "Locked" | "Archived" };
+type Account = { account_number: string; name: string; balance: number; status: "Active" | "Locked" | "Archived"; role?: string | null };
 type Transaction = { id: number; type: string; status: string; amount: number; target_account?: string | null; note?: string | null };
 
 import { useLanguage } from '@/components/ui/LanguageProvider';
@@ -17,10 +17,12 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [hasRole, setHasRole] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Account | null>(null);
   const [editName, setEditName] = useState("");
   const [editStatus, setEditStatus] = useState<Account["status"]>("Active");
+  const [editRole, setEditRole] = useState("user");
   const [depAmount, setDepAmount] = useState("");
   const [wdAmount, setWdAmount] = useState("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -39,7 +41,9 @@ export default function AdminPage() {
     const qs = search.trim() ? `?q=${encodeURIComponent(search.trim())}` : "";
     const res = await fetch(`/api/accounts${qs}`);
     const data = await res.json();
-    setAccounts(data.accounts || []);
+    const nextAccounts: Account[] = Array.isArray(data.accounts) ? data.accounts : [];
+    setAccounts(nextAccounts);
+    setHasRole(nextAccounts.some((a: any) => typeof a?.role !== "undefined"));
   };
 
   const fetchTransactions = async (acc: string) => {
@@ -50,7 +54,16 @@ export default function AdminPage() {
 
   useEffect(() => { fetchMe(); }, []);
   useEffect(() => { if (me && isAdmin) fetchAccounts(); }, [me, isAdmin]);
-  useEffect(() => { if (selected) { setEditName(selected.name); setEditStatus(selected.status); fetchTransactions(selected.account_number); } }, [selected]);
+  useEffect(() => {
+    if (!selected) return;
+    setEditName(selected.name);
+    setEditStatus(selected.status);
+    if (hasRole) {
+      const r = typeof selected.role === "string" && selected.role.trim() ? selected.role.trim().toLowerCase() : "user";
+      setEditRole(r);
+    }
+    fetchTransactions(selected.account_number);
+  }, [selected, hasRole]);
 
   const updateInfo = async (statusOverride?: string) => {
     if (!selected) return;
@@ -58,13 +71,14 @@ export default function AdminPage() {
     setError(null);
     try {
       const body: any = { name: editName, status: statusOverride || editStatus };
+      if (hasRole) body.role = editRole;
       const res = await fetch(`/api/accounts/${selected.account_number}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "Update failed"); }
+      if (!res.ok) { setError(data.error || "Update failed"); return; }
       await fetchAccounts();
       setSelected(data.account);
       if (statusOverride) setEditStatus(data.account.status);
@@ -135,6 +149,7 @@ export default function AdminPage() {
                 <tr>
                   <th>{t('admin.account_num')}</th>
                   <th>{t('admin.name')}</th>
+                  {hasRole && <th>{t('admin.role')}</th>}
                   <th>{t('admin.status')}</th>
                   <th>{t('admin.balance')}</th>
                 </tr>
@@ -144,6 +159,7 @@ export default function AdminPage() {
                   <tr key={a.account_number} className={selected?.account_number === a.account_number ? "selected" : ""} onClick={() => setSelected(a)}>
                     <td>{a.account_number}</td>
                     <td>{a.name}</td>
+                    {hasRole && <td>{typeof a.role === "string" ? a.role : ""}</td>}
                     <td>{a.status}</td>
                     <td className="num">₱{Number(a.balance).toFixed(2)}</td>
                   </tr>
@@ -156,6 +172,13 @@ export default function AdminPage() {
               <div className="card">
                 <h3>{t('admin.edit_info')}</h3>
                 <input placeholder={t('admin.name')} value={editName} onChange={e => setEditName(e.target.value)} />
+                {hasRole && (
+                  <select value={editRole} onChange={e => setEditRole(e.target.value)}>
+                    <option value="user">{t('admin.role_user')}</option>
+                    <option value="admin">{t('admin.role_admin')}</option>
+                    <option value="super_admin">{t('admin.role_super_admin')}</option>
+                  </select>
+                )}
                 <select value={editStatus} onChange={e => setEditStatus(e.target.value as Account["status"]) }>
                   <option>Active</option>
                   <option>Locked</option>

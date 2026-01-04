@@ -31,6 +31,12 @@ export async function GET(req: NextRequest) {
     const search = (url.searchParams.get('q') || url.searchParams.get('search') || '').trim();
     const includeArchived = ['1','true','yes'].includes((url.searchParams.get('include_archived') || '').toLowerCase());
 
+    const colRes = await pool.query(
+      `SELECT column_name FROM information_schema.columns WHERE table_name = 'accounts'`
+    );
+    const cols: string[] = colRes.rows.map((r: any) => r.column_name);
+    const hasRole = cols.includes('role');
+
     const where: string[] = [];
     const params: any[] = [];
     let idx = 1;
@@ -42,7 +48,7 @@ export async function GET(req: NextRequest) {
       params.push(`%${search}%`);
       idx++;
     }
-    const sql = `SELECT account_number, name, balance::float AS balance, status FROM accounts ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY account_number`;
+    const sql = `SELECT account_number, name, balance::float AS balance, status${hasRole ? ', role' : ''} FROM accounts ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY account_number`;
     const result = await pool.query(sql, params);
     return NextResponse.json({ accounts: result.rows });
   } catch (err: any) {

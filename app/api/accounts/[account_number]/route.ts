@@ -35,8 +35,13 @@ async function isAdminAccount(accountNumber: string) {
 export async function GET(_req: NextRequest, { params }: { params: { account_number: string } }) {
   const { account_number } = params;
   try {
+    const colRes = await pool.query(
+      `SELECT column_name FROM information_schema.columns WHERE table_name = 'accounts'`
+    );
+    const cols: string[] = colRes.rows.map((r: any) => r.column_name);
+    const hasRole = cols.includes('role');
     const result = await pool.query(
-      'SELECT account_number, name, balance::float AS balance, status FROM accounts WHERE account_number = $1',
+      `SELECT account_number, name, balance::float AS balance, status${hasRole ? ', role' : ''} FROM accounts WHERE account_number = $1`,
       [account_number]
     );
     if (result.rowCount === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -49,10 +54,10 @@ export async function GET(_req: NextRequest, { params }: { params: { account_num
 export async function PATCH(req: NextRequest, { params }: { params: { account_number: string } }) {
   const { account_number } = params;
   const body = await req.json();
-  const { op, amount, name, status } = body;
+  const { op, amount, name, status, role } = body;
 
   // Admin edit path: update name and/or status
-  if (typeof name === 'string' || typeof status === 'string') {
+  if (typeof name === 'string' || typeof status === 'string' || typeof role === 'string') {
     const session = req.cookies.get('session')?.value;
     if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     const isAdmin = await isAdminSession(session);
@@ -60,12 +65,29 @@ export async function PATCH(req: NextRequest, { params }: { params: { account_nu
     if (status && status !== 'Active' && status !== 'Locked' && status !== 'Archived') {
       return NextResponse.json({ error: 'Status must be Active, Locked, or Archived.' }, { status: 400 });
     }
+    const nextRole = typeof role === 'string' ? role.trim().toLowerCase() : undefined;
+    if (typeof nextRole === 'string') {
+      const allowed = new Set(['user', 'admin', 'super_admin']);
+      if (!allowed.has(nextRole)) {
+        return NextResponse.json({ error: 'Role must be user, admin, or super_admin.' }, { status: 400 });
+      }
+      if (String(account_number) === '0000' && nextRole === 'user') {
+        return NextResponse.json({ error: 'Cannot remove admin role from the primary administrator account.' }, { status: 400 });
+      }
+    }
     try {
-      // Detect optional failed_attempts column to avoid errors on older DBs
       const colCheck = await pool.query(
-        `SELECT 1 FROM information_schema.columns WHERE table_name = 'accounts' AND column_name = 'failed_attempts'`
+        `SELECT column_name
+         FROM information_schema.columns
+         WHERE table_name = 'accounts'
+           AND column_name IN ('failed_attempts','role')`
       );
-      const hasFailedAttempts = Number(colCheck?.rowCount ?? 0) > 0;
+      const colNames: string[] = colCheck.rows.map((r: any) => r.column_name);
+      const hasFailedAttempts = colNames.includes('failed_attempts');
+      const hasRole = colNames.includes('role');
+      if (typeof nextRole === 'string' && !hasRole) {
+        return NextResponse.json({ error: 'Role management is not supported by this database.' }, { status: 400 });
+      }
 
       const existing = await pool.query('SELECT account_number FROM accounts WHERE account_number = $1', [account_number]);
       if (existing.rowCount === 0) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
@@ -84,8 +106,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { account_nu
           updates.push(`failed_attempts = 0`);
         }
       }
+      if (typeof nextRole === 'string') {
+        updates.push(`role = $${idx++}`);
+        paramsArr.push(nextRole);
+      }
+      if (updates.length === 0) {
+        return NextResponse.json({ error: 'No updates provided.' }, { status: 400 });
+      }
       paramsArr.push(account_number);
-      const sql = `UPDATE accounts SET ${updates.join(', ')} WHERE account_number = $${idx} RETURNING account_number, name, balance::float AS balance, status`;
+      const returning = `account_number, name, balance::float AS balance, status${hasRole ? ', role' : ''}`;
+      const sql = `UPDATE accounts SET ${updates.join(', ')} WHERE account_number = $${idx} RETURNING ${returning}`;
       const res = await pool.query(sql, paramsArr);
       return NextResponse.json({ account: res.rows[0] });
     } catch (err: any) {
