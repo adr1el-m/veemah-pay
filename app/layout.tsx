@@ -4,6 +4,7 @@ export const metadata = {
 };
 
 import './globals.css';
+import localFont from 'next/font/local';
 import Script from 'next/script';
 import { cookies } from 'next/headers';
 import { ThemeProvider } from '@/components/ui/ThemeProvider';
@@ -13,6 +14,12 @@ import { Chatbot } from '@/components/ui/Chatbot';
 import { AuthProvider } from '@/components/ui/AuthProvider';
 import { pool } from '@/lib/db';
 import favicon from '../assets/img/favicon.png';
+
+const longhaul = localFont({
+  src: '../assets/fonts/Longhaul.ttf',
+  variable: '--font-longhaul',
+  display: 'swap',
+});
 
 type Me = { 
   authenticated: boolean; 
@@ -66,7 +73,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const initialMe = await getServerMe();
   
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={longhaul.variable}>
       <head>
         <meta name="color-scheme" content="dark light" />
         <link rel="icon" href={favicon.src} />

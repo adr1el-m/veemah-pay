@@ -149,6 +149,9 @@ const translations: Translations = {
   'user.operation_failed': { en: 'Operation failed', tl: 'Nabigo ang operasyon' },
   'user.transfer_failed': { en: 'Transfer failed', tl: 'Nabigo ang paglilipat' },
   'user.pin_placeholder': { en: 'PIN', tl: 'PIN' },
+  'user.recipient_checking': { en: 'Checking recipient...', tl: 'Tinitingnan ang tatanggap...' },
+  'user.recipient_not_found': { en: 'Recipient account not found', tl: 'Hindi nahanap ang account ng tatanggap' },
+  'user.recipient_belongs_to': { en: 'This account belongs to', tl: 'Ang account na ito ay kay' },
 
   // Graph
   'graph.no_data': { en: 'No transaction data to display yet.', tl: 'Wala pang datos ng transaksyon.' },

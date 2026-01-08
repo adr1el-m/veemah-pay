@@ -30,15 +30,18 @@ export default function Page() {
                fontWeight: 800, 
                lineHeight: 1.1, 
                marginBottom: 24, 
-               letterSpacing: '-0.02em',
-               background: 'linear-gradient(135deg, var(--text) 30%, var(--primary))', 
+               letterSpacing: '0',
+               background: 'linear-gradient(90deg, #0b5d3b 0%, #12a777 45%, #18c6a0 75%, #0f8f6e 100%)',
                WebkitBackgroundClip: 'text', 
                WebkitTextFillColor: 'transparent',
-               backgroundClip: 'text',
-               color: 'transparent' // Fallback
-             }}>
-               {t('home.hero.title_line1')}
-             </h1>
+              backgroundClip: 'text',
+              color: 'transparent' // Fallback
+            }}>
+              <span style={{ fontFamily: 'var(--font-longhaul), system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif' }}>
+                <span style={{ letterSpacing: '0.06em' }}>Veemah</span>
+                <span style={{ fontSize: '0.52em', letterSpacing: '0.14em', marginLeft: '0.12em', fontWeight: 800, verticalAlign: 'baseline' }}>Pay</span>
+              </span>
+            </h1>
              
              <p style={{ 
                fontSize: 'clamp(1.125rem, 2.5vw, 1.5rem)', 

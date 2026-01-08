@@ -23,6 +23,9 @@ export default function UserPage() {
   const [txAmount, setTxAmount] = useState("");
   const [txTarget, setTxTarget] = useState("");
   const [txPin, setTxPin] = useState("");
+  const [recipientChecking, setRecipientChecking] = useState(false);
+  const [recipientExists, setRecipientExists] = useState<boolean | null>(null);
+  const [recipientMaskedName, setRecipientMaskedName] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrMode, setQrMode] = useState<"display" | "scan">("display");
@@ -36,6 +39,26 @@ export default function UserPage() {
       return null;
     }
   };
+
+  const verifyRecipient = useCallback(async (targetAccount: string) => {
+    const res = await fetch(`/api/accounts/${encodeURIComponent(targetAccount)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const data: any = await readJson(res);
+
+    if (res.status === 404) {
+      return { exists: false as const, maskedName: null as string | null };
+    }
+    if (!res.ok) {
+      throw new Error(data?.error || t("user.operation_failed"));
+    }
+    return {
+      exists: Boolean(data?.exists),
+      maskedName: typeof data?.maskedName === "string" ? data.maskedName : null,
+    };
+  }, [t]);
 
   const fetchMe = useCallback(async () => {
     try {
@@ -94,6 +117,61 @@ export default function UserPage() {
   useEffect(() => {
     if (me) fetchTransactions(me.account_number);
   }, [fetchTransactions, me]);
+
+  useEffect(() => {
+    const target = txTarget.trim();
+
+    if (!target) {
+      setRecipientChecking(false);
+      setRecipientExists(null);
+      setRecipientMaskedName(null);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    setRecipientChecking(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/accounts/${encodeURIComponent(target)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+          signal: controller.signal,
+        });
+        const data: any = await readJson(res);
+        if (cancelled) return;
+
+        if (res.status === 404) {
+          setRecipientExists(false);
+          setRecipientMaskedName(null);
+          return;
+        }
+        if (!res.ok) {
+          setRecipientExists(null);
+          setRecipientMaskedName(null);
+          return;
+        }
+
+        setRecipientExists(Boolean(data?.exists));
+        setRecipientMaskedName(typeof data?.maskedName === "string" ? data.maskedName : null);
+      } catch {
+        if (cancelled) return;
+        setRecipientExists(null);
+        setRecipientMaskedName(null);
+      } finally {
+        if (cancelled) return;
+        setRecipientChecking(false);
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [txTarget]);
 
   const doOp = async (type: "deposit" | "withdraw") => {
     if (!me) return;
@@ -181,6 +259,16 @@ export default function UserPage() {
     setPending(true);
     setError(null);
     try {
+      const verifyTarget = txTarget.trim();
+      const verification = await verifyRecipient(verifyTarget);
+      setRecipientExists(verification.exists);
+      setRecipientMaskedName(verification.maskedName);
+
+      if (!verification.exists) {
+        setError(t("user.recipient_not_found"));
+        return;
+      }
+
       let opOk = false;
       try {
         const res = await fetch("/api/transactions", {
@@ -344,10 +432,25 @@ export default function UserPage() {
                   📷 Scan
                 </button>
               </div>
+              {txTarget.trim() && (
+                <div style={{ fontSize: 12, marginTop: -2, marginBottom: 6, color: recipientExists === false ? "#b00020" : "var(--muted)" }}>
+                  {recipientChecking
+                    ? t("user.recipient_checking")
+                    : recipientExists === false
+                      ? t("user.recipient_not_found")
+                      : recipientMaskedName
+                        ? `${t("user.recipient_belongs_to")} ${recipientMaskedName}`
+                        : ""}
+                </div>
+              )}
               <input placeholder={t('dash.amount')} value={txAmount} onChange={e => setTxAmount(e.target.value)} />
               <input type="password" placeholder={t('user.pin_placeholder')} value={txPin} onChange={e => setTxPin(e.target.value)} maxLength={5} />
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button className="btn primary" onClick={doTransfer} disabled={pending}>
+                <button
+                  className="btn primary"
+                  onClick={doTransfer}
+                  disabled={pending || recipientChecking || recipientExists !== true}
+                >
                   {t('dash.transfer')}
                 </button>
                 <button 
