@@ -49,15 +49,20 @@ export default function LoginPage() {
     if (pending) return;
     setError(null);
     setPending(true);
+    let timeout: number | undefined;
     try {
       const client_location = await getClientLocation();
       // Send as 'password' - API handles fallback to PIN if needed
+      const controller = new AbortController();
+      timeout = window.setTimeout(() => controller.abort(), 12_000);
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, client_location }),
+        signal: controller.signal,
       });
-      const data = await res.json();
+      if (timeout) window.clearTimeout(timeout);
+      const data = await res.json().catch(() => ({} as any));
       if (!res.ok) {
         setError(data?.error || "Login failed");
         return;
@@ -78,8 +83,13 @@ export default function LoginPage() {
         router.replace("/user");
       }
     } catch (e: any) {
-      setError(e?.message || "Login failed");
+      if (String(e?.name) === "AbortError") {
+        setError("Login timed out. Make sure the database is running, then try again.");
+      } else {
+        setError(e?.message || "Login failed");
+      }
     } finally {
+      if (timeout) window.clearTimeout(timeout);
       setPending(false);
     }
   };

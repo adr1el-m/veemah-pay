@@ -19,7 +19,7 @@ if (connectionString.includes('sslmode=require') || /neon\.tech|vercel\./.test(c
   sslRequired = true;
 }
 
-const poolConfig: any = { connectionString };
+const poolConfig: any = { connectionString, connectionTimeoutMillis: 4000, query_timeout: 10_000 };
 if (sslRequired) {
   poolConfig.ssl = { rejectUnauthorized: false };
 }
