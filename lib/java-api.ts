@@ -98,18 +98,12 @@ export interface ApiErrorResponse {
 	timestamp: string;
 }
 
-// Health check cache to avoid repeated expensive calls
-let healthCheckCache: { 
-	isHealthy: boolean; 
-	timestamp: number; 
-	promise?: Promise<boolean>;
-} | null = null;
-const HEALTH_CHECK_CACHE_DURATION = 30000; // 30 seconds
 const HEALTH_CHECK_TIMEOUT = 3000; // 3 seconds timeout for health checks
 
 // Startup connection mode - once determined, stick with it for the session
 let connectionMode: 'java' | 'nextjs' | 'unknown' = 'unknown';
 let startupCheckComplete = false;
+let startupCheckPromise: Promise<'java' | 'nextjs'> | null = null;
 
 /**
  * Perform startup health check to determine which server to use for the entire session
@@ -119,41 +113,59 @@ async function performStartupHealthCheck(): Promise<'java' | 'nextjs'> {
 		return connectionMode as 'java' | 'nextjs';
 	}
 
+	// If a check is already in progress, wait for it
+	if (startupCheckPromise) {
+		return startupCheckPromise;
+	}
+
 	console.log("🚀 Performing one-time startup health check...");
 
-	// In production without proper environment variables, use Next.js
-	if (config.isProduction && !JAVA_API_BASE) {
-		console.log("🔄 Production mode without Java API URL configured, using Next.js API");
-		connectionMode = 'nextjs';
-		startupCheckComplete = true;
-		return 'nextjs';
-	}
+	// Create the promise for this check
+	startupCheckPromise = (async (): Promise<'java' | 'nextjs'> => {
+		// In production without proper environment variables, use Next.js
+		if (config.isProduction && !JAVA_API_BASE) {
+			console.log("🔄 Production mode without Java API URL configured, using Next.js API");
+			connectionMode = 'nextjs';
+			startupCheckComplete = true;
+			return 'nextjs';
+		}
 
-	if (!JAVA_API_BASE) {
-		console.log("� No Java API URL configured, using Next.js API");
-		connectionMode = 'nextjs';
-		startupCheckComplete = true;
-		return 'nextjs';
-	}
+		if (!JAVA_API_BASE) {
+			console.log("🔄 No Java API URL configured, using Next.js API");
+			connectionMode = 'nextjs';
+			startupCheckComplete = true;
+			return 'nextjs';
+		}
 
-	try {
-		await performHealthCheck();
-		console.log("✅ Java server is healthy - using Java API for this session");
-		connectionMode = 'java';
-		startupCheckComplete = true;
-		return 'java';
-	} catch (error) {
-		console.warn("⚠️ Java server health check failed - using Next.js API for this session:", error);
-		connectionMode = 'nextjs';
-		startupCheckComplete = true;
-		return 'nextjs';
-	}
+		try {
+			await performHealthCheck();
+			console.log("✅ Java server is healthy - using Java API for this session");
+			connectionMode = 'java';
+			startupCheckComplete = true;
+			return 'java';
+		} catch (error) {
+			console.warn("⚠️ Java server health check failed - using Next.js API for this session:", error);
+			connectionMode = 'nextjs';
+			startupCheckComplete = true;
+			return 'nextjs';
+		}
+	})();
+
+	return startupCheckPromise;
 }
 
 /**
  * Check if Java server is healthy before making API calls (now just returns startup result)
  */
 async function checkJavaServerHealth(): Promise<boolean> {
+	const mode = await performStartupHealthCheck();
+	return mode === 'java';
+}
+
+/**
+ * Check if we should use Java server (startup-only check)
+ */
+async function shouldUseJavaServer(): Promise<boolean> {
 	const mode = await performStartupHealthCheck();
 	return mode === 'java';
 }
@@ -676,7 +688,6 @@ export const config = {
 
 	// Performance settings
 	healthCheckTimeout: HEALTH_CHECK_TIMEOUT,
-	healthCheckCacheDuration: HEALTH_CHECK_CACHE_DURATION,
 	requestTimeout: 8000,
 
 	// Get current connection mode
@@ -694,7 +705,7 @@ export const config = {
 	resetStartupCheck() {
 		connectionMode = 'unknown';
 		startupCheckComplete = false;
-		healthCheckCache = null;
+		startupCheckPromise = null;
 		console.log("🔄 Startup check reset - next API call will redetermine connection mode");
 	},
 
@@ -712,10 +723,9 @@ export const config = {
 		console.log("🔧 Forced to use Java API mode");
 	},
 
-	// Clear health check cache (legacy - kept for compatibility)
+	// Clear health check cache (legacy - no longer needed)
 	clearHealthCache() {
-		healthCheckCache = null;
-		console.log("🧹 Health check cache cleared");
+		console.log("🧹 Health check cache cleared (no-op - using startup-only mode)");
 	},
 
 	// Force health check (legacy - now just resets startup check)
@@ -745,11 +755,8 @@ export const config = {
 			connectionMode: connMode,
 			performance: {
 				healthCheckTimeout: this.healthCheckTimeout + "ms",
-				healthCheckCacheDuration: this.healthCheckCacheDuration + "ms", 
 				requestTimeout: this.requestTimeout + "ms",
-				cacheStatus: healthCheckCache ? 
-					`Cached (${Math.round((Date.now() - healthCheckCache.timestamp) / 1000)}s ago, healthy: ${healthCheckCache.isHealthy})` : 
-					"No cache"
+				mode: "startup-only (no repeated health checks)"
 			},
 			ngrokDetection: {
 				containsNgrok: this.apiBase?.includes("ngrok"),
