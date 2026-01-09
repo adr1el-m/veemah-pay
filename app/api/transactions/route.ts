@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
-
-const JAVA_BACKEND_URL = process.env.JAVA_BACKEND_URL || 'http://localhost:8080';
+import { createTransaction as createTransactionJava } from '@/lib/java-api';
 
 type TxType = 'deposit'|'withdraw'|'transfer';
 
@@ -760,29 +759,28 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'PIN is required for this transaction.' }, { status: 400 });
     }
 
+    // Use centralized Java API with startup-only connection checking
     try {
-      const upstream = await fetch(`${JAVA_BACKEND_URL}/api/transactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: t,
-          source_account,
-          target_account,
-          amount: amt,
-          note,
-          pending,
-          pin,
-        }),
+      const result = await createTransactionJava({
+        type: t,
+        source_account,
+        target_account,
+        amount: amt,
+        note,
+        status: pending ? 'Pending' : 'Completed',
+        pin,
+        created_by: session,
       });
-      if (upstream.ok) {
-        const data = await upstream.json().catch(() => null);
-        return NextResponse.json(data ?? { ok: true });
+      
+      // If Java API succeeded, return its response
+      if (result.success) {
+        return NextResponse.json({ transaction: result.transaction });
       }
-      console.warn(`[POST /api/transactions] Java server returned ${upstream.status}, falling back to local DB.`);
     } catch (e) {
-      console.warn('[POST /api/transactions] Java server unreachable, falling back to local DB:', e);
+      console.warn('[POST /api/transactions] Java API failed, falling back to local DB:', e);
     }
 
+    // Fallback to local database implementation
     client = await pool.connect();
     await client.query('BEGIN');
 
