@@ -65,7 +65,7 @@ export function JavaServerTest() {
       <h3>🔧 Java Server Connection Test</h3>
       
       <div style={{ marginBottom: '10px' }}>
-        <strong>API Base URL:</strong> {config.apiBase}
+        <strong>API Base URL:</strong> {config.apiBase || 'Not configured'}
       </div>
       
       <button 
@@ -136,10 +136,10 @@ export function JavaServerTest() {
 - NODE_ENV: ${process.env.NODE_ENV}
 
 Configuration:
-- API Base: ${config.apiBase}
+- API Base: ${config.apiBase || 'Not configured'}
 - Use Java Server: ${config.useJavaServer}
 - Is Production: ${config.isProduction}
-- Has ngrok Header: ${config.apiBase.includes('ngrok') || config.apiBase.includes('tunnel')}`}
+- Has ngrok Header: ${config.apiBase ? (config.apiBase.includes('ngrok') || config.apiBase.includes('tunnel')) : false}`}
         </pre>
       </details>
     </div>

@@ -29,7 +29,10 @@ function createHeaders(
 	}
 
 	// Add ngrok skip warning header for tunnel requests
-	if (JAVA_API_BASE && (JAVA_API_BASE.includes("ngrok") || JAVA_API_BASE.includes("tunnel"))) {
+	if (
+		JAVA_API_BASE &&
+		(JAVA_API_BASE.includes("ngrok") || JAVA_API_BASE.includes("tunnel"))
+	) {
 		headers["ngrok-skip-browser-warning"] = "true";
 	}
 
@@ -94,10 +97,12 @@ async function checkJavaServerHealth(): Promise<boolean> {
 	try {
 		// In production without proper environment variables, skip Java server
 		if (config.isProduction && !JAVA_API_BASE) {
-			console.log("🔄 Production mode without Java API URL configured, using Next.js API fallback");
+			console.log(
+				"🔄 Production mode without Java API URL configured, using Next.js API fallback"
+			);
 			return false;
 		}
-		
+
 		await checkServerHealth();
 		return true;
 	} catch (error) {
@@ -378,9 +383,11 @@ export async function updateTransaction(
 	data: UpdateTransactionRequest
 ): Promise<CreateTransactionResponse> {
 	if (!JAVA_API_BASE) {
-		throw new Error("Java API not configured, update operations require Java server");
+		throw new Error(
+			"Java API not configured, update operations require Java server"
+		);
 	}
-	
+
 	try {
 		const response = await fetch(`${JAVA_API_BASE}/api/transactions/${id}`, {
 			method: "PUT",
@@ -409,9 +416,11 @@ export async function cancelTransaction(
 	id: string | number
 ): Promise<{ success: boolean; message: string }> {
 	if (!JAVA_API_BASE) {
-		throw new Error("Java API not configured, cancel operations require Java server");
+		throw new Error(
+			"Java API not configured, cancel operations require Java server"
+		);
 	}
-	
+
 	try {
 		const response = await fetch(`${JAVA_API_BASE}/api/transactions/${id}`, {
 			method: "DELETE",
@@ -444,7 +453,7 @@ export async function checkServerHealth(): Promise<{
 	if (!JAVA_API_BASE) {
 		throw new Error("Java API base URL not configured");
 	}
-	
+
 	const url = `${JAVA_API_BASE}/health`;
 	console.log(`🔗 Health check URL: ${url}`);
 
@@ -562,7 +571,8 @@ export const config = {
 			useJavaServer: this.useJavaServer,
 			autoFallback: this.autoFallback,
 			hasNgrokHeader:
-				this.apiBase && (this.apiBase.includes("ngrok") || this.apiBase.includes("tunnel")),
+				this.apiBase &&
+				(this.apiBase.includes("ngrok") || this.apiBase.includes("tunnel")),
 			env: {
 				NEXT_PUBLIC_JAVA_API_URL: process.env.NEXT_PUBLIC_JAVA_API_URL,
 				JAVA_TRANSACTION_API: process.env.JAVA_TRANSACTION_API,
