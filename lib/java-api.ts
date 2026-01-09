@@ -98,25 +98,117 @@ export interface ApiErrorResponse {
 	timestamp: string;
 }
 
+const HEALTH_CHECK_TIMEOUT = 3000; // 3 seconds timeout for health checks
+
+// Startup connection mode - once determined, stick with it for the session
+let connectionMode: 'java' | 'nextjs' | 'unknown' = 'unknown';
+let startupCheckComplete = false;
+let startupCheckPromise: Promise<'java' | 'nextjs'> | null = null;
+
 /**
- * Check if Java server is healthy before making API calls
+ * Perform startup health check to determine which server to use for the entire session
+ * This runs only ONCE per page load and caches the result
  */
-async function checkJavaServerHealth(): Promise<boolean> {
-	try {
-		// In production without proper environment variables, skip Java server
+async function performStartupHealthCheck(): Promise<'java' | 'nextjs'> {
+	// If already completed, return cached result immediately
+	if (startupCheckComplete) {
+		return connectionMode as 'java' | 'nextjs';
+	}
+
+	// If check is already in progress, wait for it
+	if (startupCheckPromise) {
+		return await startupCheckPromise;
+	}
+
+	// Start the one-time check
+	startupCheckPromise = (async (): Promise<'java' | 'nextjs'> => {
+		console.log("🚀 Performing ONE-TIME startup health check...");
+
+		// In production without proper environment variables, use Next.js
 		if (config.isProduction && !JAVA_API_BASE) {
-			console.log("🔄 Production mode without Java API URL configured, using Next.js API fallback");
-			return false;
+			console.log("🔄 Production mode without Java API URL configured, using Next.js API for entire session");
+			connectionMode = 'nextjs';
+			startupCheckComplete = true;
+			return 'nextjs';
 		}
-		
-		await checkServerHealth();
+
+		if (!JAVA_API_BASE) {
+			console.log("🔄 No Java API URL configured, using Next.js API for entire session");
+			connectionMode = 'nextjs';
+			startupCheckComplete = true;
+			return 'nextjs';
+		}
+
+		try {
+			await performHealthCheck();
+			console.log("✅ Java server is healthy - using Java API for ENTIRE SESSION");
+			connectionMode = 'java';
+			startupCheckComplete = true;
+			return 'java';
+		} catch (error) {
+			console.warn("⚠️ Java server health check failed - using Next.js API for ENTIRE SESSION:", error);
+			connectionMode = 'nextjs';
+			startupCheckComplete = true;
+			return 'nextjs';
+		}
+	})();
+
+	return await startupCheckPromise;
+}
+
+/**
+ * Check if should use Java server (startup-only, then cached)
+ */
+async function shouldUseJavaServer(): Promise<boolean> {
+	const mode = await performStartupHealthCheck();
+	return mode === 'java';
+}
+
+/**
+ * Perform the actual health check with optimized timeouts
+ */
+async function performHealthCheck(): Promise<boolean> {
+	if (!JAVA_API_BASE) {
+		throw new Error("Java API base URL not configured");
+	}
+	
+	const url = `${JAVA_API_BASE}/health`;
+	console.log(`🔗 Health check URL: ${url}`);
+
+	try {
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
+
+		const response = await fetch(url, {
+			method: "GET",
+			headers: createHeaders("none"),
+			signal: controller.signal,
+			// Optimize for speed
+			cache: "no-cache",
+			keepalive: true
+		});
+
+		clearTimeout(timeoutId);
+
+		console.log(`📡 Health check response: ${response.status} ${response.statusText}`);
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			console.log(`❌ Health check failed: ${response.status} - ${errorText}`);
+			throw new Error(`Health check failed: ${response.status} - ${errorText}`);
+		}
+
+		const result = await response.json();
+		console.log(`✅ Health check successful`);
 		return true;
 	} catch (error) {
-		console.warn(
-			"🔄 Java server health check failed, will use fallback:",
-			error
-		);
-		return false;
+		if (error instanceof Error && error.name === 'AbortError') {
+			console.error("❌ Health check timed out after", HEALTH_CHECK_TIMEOUT, "ms");
+			throw new Error("Health check timeout");
+		}
+		
+		console.error("❌ Health check error:", error instanceof Error ? error.message : String(error));
+		throw error;
 	}
 }
 
@@ -178,11 +270,11 @@ export async function fetchTransactions(params: {
 	max_amount?: number;
 	limit?: number;
 }): Promise<TransactionResponse> {
-	// First check if Java server is healthy
-	const javaServerHealthy = await checkJavaServerHealth();
+	// Check if Java server should be used (startup-only check)
+	const useJavaServer = await shouldUseJavaServer();
 
-	if (!javaServerHealthy || !JAVA_API_BASE) {
-		console.log("🔄 Falling back to Next.js API for transactions");
+	if (!useJavaServer || !JAVA_API_BASE) {
+		console.log("🔄 Using Next.js API for transactions (determined at startup)");
 		return fetchTransactionsNextJS(params);
 	}
 
@@ -232,11 +324,11 @@ export async function fetchTransactions(params: {
 export async function fetchTransaction(
 	id: string | number
 ): Promise<Transaction> {
-	// First check if Java server is healthy
-	const javaServerHealthy = await checkJavaServerHealth();
+	// Check if Java server should be used (startup-only check)
+	const useJavaServer = await shouldUseJavaServer();
 
-	if (!javaServerHealthy || !JAVA_API_BASE) {
-		console.log("🔄 Falling back to Next.js API for single transaction fetch");
+	if (!useJavaServer || !JAVA_API_BASE) {
+		console.log("🔄 Using Next.js API for single transaction fetch (determined at startup)");
 		const response = await fetch(`/api/transactions/${id}`, {
 			method: "GET",
 			headers: { Accept: "application/json" },
@@ -343,11 +435,11 @@ async function createTransactionNextJS(
 export async function createTransaction(
 	data: CreateTransactionRequest
 ): Promise<CreateTransactionResponse> {
-	// First check if Java server is healthy
-	const javaServerHealthy = await checkJavaServerHealth();
+	// Check if Java server should be used (startup-only check)
+	const useJavaServer = await shouldUseJavaServer();
 
-	if (!javaServerHealthy || !JAVA_API_BASE) {
-		console.log("🔄 Falling back to Next.js API for transaction creation");
+	if (!useJavaServer || !JAVA_API_BASE) {
+		console.log("🔄 Using Next.js API for transaction creation (determined at startup)");
 		return createTransactionNextJS(data);
 	}
 
@@ -566,6 +658,53 @@ export const config = {
 	// will check Java server health first and fall back to Next.js API if needed
 	autoFallback: true,
 
+	// Performance settings
+	healthCheckTimeout: HEALTH_CHECK_TIMEOUT,
+	requestTimeout: 8000,
+
+	// Get current connection mode
+	getConnectionMode() {
+		return {
+			mode: connectionMode,
+			startupComplete: startupCheckComplete,
+			description: connectionMode === 'java' ? 'Using Java server for all transactions' :
+						connectionMode === 'nextjs' ? 'Using Next.js API for all transactions' :
+						'Connection mode not yet determined'
+		};
+	},
+
+	// Reset startup check (for testing or if you want to recheck)
+	resetStartupCheck() {
+		connectionMode = 'unknown';
+		startupCheckComplete = false;
+		console.log("🔄 Startup check reset - next API call will redetermine connection mode");
+	},
+
+	// Force use of Next.js API (bypass startup check)
+	forceNextJSMode() {
+		connectionMode = 'nextjs';
+		startupCheckComplete = true;
+		console.log("🔧 Forced to use Next.js API mode");
+	},
+
+	// Force use of Java API (bypass startup check)
+	forceJavaMode() {
+		connectionMode = 'java';
+		startupCheckComplete = true;
+		console.log("🔧 Forced to use Java API mode");
+	},
+
+	// Clear health check cache (legacy - no longer needed)
+	clearHealthCache() {
+		console.log("🧹 Health check cache cleared (no-op - using startup-only mode)");
+	},
+
+	// Force health check (legacy - now just resets startup check)
+	async forceHealthCheck() {
+		this.resetStartupCheck();
+		return await shouldUseJavaServer();
+	},
+
 	// Log configuration for debugging
 	logConfig() {
 		const shouldAddNgrokHeader = JAVA_API_BASE && (
@@ -582,6 +721,12 @@ export const config = {
 			useJavaServer: this.useJavaServer,
 			autoFallback: this.autoFallback,
 			shouldAddNgrokHeader,
+			connectionMode: connMode,
+			performance: {
+				healthCheckTimeout: this.healthCheckTimeout + "ms", 
+				requestTimeout: this.requestTimeout + "ms",
+				mode: "startup-only (no repeated health checks)"
+			},
 			ngrokDetection: {
 				containsNgrok: this.apiBase?.includes("ngrok"),
 				containsTunnel: this.apiBase?.includes("tunnel"), 
