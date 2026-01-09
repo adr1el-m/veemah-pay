@@ -239,7 +239,7 @@ export default function AdminPage() {
                     {transactions.map(tx => (
                       <tr key={tx.id}>
                         <td>{tx.id}</td>
-                        <td>{tx.type}</td>
+                        <td style={{ textTransform: 'capitalize' }}>{tx.type}</td>
                         <td>{tx.status}</td>
                         <td className="num">₱{Number(tx.amount).toFixed(2)}</td>
                         <td>{tx.target_account || ""}</td>

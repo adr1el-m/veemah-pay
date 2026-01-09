@@ -37,7 +37,7 @@ type DailyPoint = {
   income: number;
   expense: number;
   net: number;
-  expenseAvg7: number | null;
+  expenseAvg: number;
 };
 
 type CategoryPoint = {
@@ -108,17 +108,6 @@ function inferCategory(tx: Transaction) {
   return matched?.category ?? 'Other';
 }
 
-function movingAverage(values: number[], windowSize: number) {
-  const out: Array<number | null> = new Array(values.length).fill(null);
-  let sum = 0;
-  for (let i = 0; i < values.length; i++) {
-    sum += values[i];
-    if (i >= windowSize) sum -= values[i - windowSize];
-    if (i >= windowSize - 1) out[i] = sum / windowSize;
-  }
-  return out;
-}
-
 export function SpendingGraph({ transactions }: Props) {
   const { t } = useLanguage();
   const [selectedRange, setSelectedRange] = useState<TimeRange>('30d');
@@ -162,6 +151,15 @@ export function SpendingGraph({ transactions }: Props) {
         : selectedRange === '90d'
           ? t('graph.range_90d')
           : t('graph.range_ytd');
+
+  const avgLabel =
+    selectedRange === '7d'
+      ? t('graph.expense_avg_7d')
+      : selectedRange === '30d'
+        ? t('graph.expense_avg_30d')
+        : selectedRange === '90d'
+          ? t('graph.expense_avg_90d')
+          : t('graph.expense_avg_ytd');
 
   const analytics = useMemo(() => {
     const completed = transactions.filter((tx) => String(tx.status) === 'Completed');
@@ -268,12 +266,12 @@ export function SpendingGraph({ transactions }: Props) {
         income: totals.income,
         expense: totals.expense,
         net: totals.income - totals.expense,
-        expenseAvg7: null,
+        expenseAvg: 0,
       });
     }
 
-    const avg = movingAverage(daily.map((d) => d.expense), 7);
-    for (let i = 0; i < daily.length; i++) daily[i].expenseAvg7 = avg[i];
+    const avgValue = totalDays > 0 ? periodExpense / totalDays : 0;
+    for (let i = 0; i < daily.length; i++) daily[i].expenseAvg = avgValue;
 
     const monthKeys = Array.from(monthTotals.keys()).sort((a, b) => a.localeCompare(b));
     const months: MonthPoint[] = monthKeys.slice(-6).map((k) => {
@@ -604,8 +602,8 @@ export function SpendingGraph({ transactions }: Props) {
                 />
                 <Line
                   type="monotone"
-                  dataKey="expenseAvg7"
-                  name={t('graph.expense_avg_7d')}
+                  dataKey="expenseAvg"
+                  name={avgLabel}
                   stroke={avgStroke}
                   strokeWidth={2}
                   dot={false}

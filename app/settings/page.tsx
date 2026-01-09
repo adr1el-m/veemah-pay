@@ -216,54 +216,7 @@ export default function SettingsPage() {
     }
   };
 
-  const submitPin = async () => {
-    if (pinPending) return;
-    if (!account) return;
-    if (!pinCurrent || !pinNew || !pinConfirm) {
-      toast.show(t("settings.pin_fields_required"), "error");
-      return;
-    }
-    if (pinNew !== pinConfirm) {
-      toast.show(t("settings.pin_mismatch"), "error");
-      return;
-    }
-    if (!/^\d{5}$/.test(pinNew)) {
-      toast.show(t("settings.pin_5_digits"), "error");
-      return;
-    }
-    if (account.hasPassword && !pinPassword) {
-      toast.show(t("settings.current_password_required"), "error");
-      return;
-    }
-    setPinPending(true);
-    try {
-      const res = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "change_pin",
-          currentPassword: pinPassword || undefined,
-          currentPin: pinCurrent,
-          newPin: pinNew,
-          confirmPin: pinConfirm,
-        }),
-      });
-      const data: any = await readJson(res);
-      if (!res.ok) {
-        toast.show(data?.error || t("settings.update_failed"), "error");
-        return;
-      }
-      setPinCurrent("");
-      setPinPassword("");
-      setPinNew("");
-      setPinConfirm("");
-      toast.show(t("settings.pin_updated"), "success");
-    } catch (e: any) {
-      toast.show(e?.message || t("settings.update_failed"), "error");
-    } finally {
-      setPinPending(false);
-    }
-  };
+
 
   const submitPassword = async () => {
     if (pwPending) return;
@@ -408,32 +361,6 @@ export default function SettingsPage() {
           <div className="card">
             <h2>{t("settings.security")}</h2>
             <div className="grid grid-cols-1 gap-16">
-              <div className="card" style={{ padding: 12 }}>
-                <h3 style={{ margin: 0 }}>{t("settings.change_pin")}</h3>
-                <div className="grid grid-cols-1 gap-12">
-                  <div className="grid gap-12" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
-                    <div>
-                      <label>{t("settings.current_pin")}</label>
-                      <input value={pinCurrent} onChange={(e) => setPinCurrent(e.target.value)} />
-                    </div>
-                    <div>
-                      <label>{t("settings.current_password_optional")}</label>
-                      <input type="password" value={pinPassword} onChange={(e) => setPinPassword(e.target.value)} />
-                    </div>
-                    <div>
-                      <label>{t("settings.new_pin")}</label>
-                      <input value={pinNew} onChange={(e) => setPinNew(e.target.value)} />
-                    </div>
-                    <div>
-                      <label>{t("settings.confirm_pin")}</label>
-                      <input value={pinConfirm} onChange={(e) => setPinConfirm(e.target.value)} />
-                    </div>
-                  </div>
-                  <button className="btn" onClick={submitPin} disabled={pinPending}>
-                    {pinPending ? t("settings.saving") : t("settings.save_pin")}
-                  </button>
-                </div>
-              </div>
 
               <div className="card" style={{ padding: 12 }}>
                 <h3 style={{ margin: 0 }}>{t("settings.change_password")}</h3>

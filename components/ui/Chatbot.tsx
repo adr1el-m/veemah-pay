@@ -21,8 +21,8 @@ export function Chatbot() {
   const { t } = useLanguage();
   const pathname = usePathname();
 
-  // Only show on user dashboard or admin panel
-  const isVisible = pathname?.startsWith('/user') || pathname?.startsWith('/admin');
+  // Only show on user dashboard
+  const isVisible = pathname?.startsWith('/user');
 
   useEffect(() => {
     if (scrollRef.current) {
