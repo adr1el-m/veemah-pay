@@ -845,20 +845,22 @@ select {
 
 .password-input {
   width: 100%;
-  padding-right: 45px;
+  padding-right: 50px;
   box-sizing: border-box;
   padding: 14px 16px !important;
 }
 
 .password-toggle-btn {
   position: absolute;
-  right: 8px;
+  right: 12px;
   top: 50%;
-  transform: translateY(-50%) translate(47%);
+  transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
