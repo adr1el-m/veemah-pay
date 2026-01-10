@@ -329,10 +329,10 @@ export default function SettingsPage() {
                   <label>{t("settings.current_password_optional")}</label>
                   <PasswordInput value={profileCurrentPassword} onChange={setProfileCurrentPassword} />
                 </div>
-                <div>
+                {/* <div>
                   <label>{t("settings.current_pin_optional")}</label>
                   <input value={profileCurrentPin} onChange={(e) => setProfileCurrentPin(e.target.value)} />
-                </div>
+                </div> */}
               </div>
               {emailChangeEmail && (
                 <div className="card" style={{ padding: 12 }}>
@@ -371,10 +371,10 @@ export default function SettingsPage() {
                       <label>{t("settings.current_password_optional")}</label>
                       <PasswordInput value={pwCurrent} onChange={setPwCurrent} />
                     </div>
-                    <div>
+                    {/* <div>
                       <label>{t("settings.current_pin_optional")}</label>
                       <input value={pwPin} onChange={(e) => setPwPin(e.target.value)} />
-                    </div>
+                    </div> */}
                   </div>
                   <div className="grid gap-12" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
                     <div>
